@@ -1,7 +1,7 @@
 use std::ptr;
 use windows::core::HRESULT;
 use windows::Win32::Devices::Bluetooth::{BluetoothFindDeviceClose, BluetoothFindFirstDevice, BluetoothFindNextDevice, BLUETOOTH_DEVICE_INFO, BLUETOOTH_DEVICE_SEARCH_PARAMS};
-use windows::Win32::Foundation::{ERROR_INVALID_HANDLE, ERROR_INVALID_PARAMETER, ERROR_NO_MORE_ITEMS, ERROR_OUTOFMEMORY, ERROR_REVISION_MISMATCH, FALSE, HANDLE, SYSTEMTIME, TRUE, WIN32_ERROR};
+use windows::Win32::Foundation::{ERROR_GEN_FAILURE, ERROR_INVALID_HANDLE, ERROR_INVALID_PARAMETER, ERROR_NO_MORE_ITEMS, ERROR_OUTOFMEMORY, ERROR_REVISION_MISMATCH, FALSE, HANDLE, TRUE, WIN32_ERROR};
 use windows::core::Error as WinErr;
 use crate::bluetooth_device::BluetoothDevice;
 
@@ -14,6 +14,8 @@ fn err_eq(win_err: &WinErr, win32_err: WIN32_ERROR) -> bool {
 pub enum DiscoverDevicesError {
     #[error("Not enough storage is available to complete this operation")]
     OutOfMemory,
+    #[error("Error with bluetooth adapter, bluetooth may be off or no bluetooth adapter exists.")]
+    BluetoothError,
     #[error("Unhandled error from windows api: {0}")]
     UnhandledWin32ApiErr(WinErr),
 }
@@ -37,11 +39,14 @@ pub fn discover_devices() -> Result<Vec<BluetoothDevice>, DiscoverDevicesError> 
     
     let mut found_devices = Vec::new();
 
+    // SAFETY: not used concurrently & dwSize has been set correctly
     let h_find = match unsafe { BluetoothFindFirstDevice(&search_params, &mut device_info) } {
         Ok(h_find) => h_find,
         Err(err) if err_eq(&err, ERROR_REVISION_MISMATCH) => unreachable!("dwSize should be correct"),
         Err(err) if err_eq(&err, ERROR_INVALID_PARAMETER) => unreachable!("params properly initialized"),
         Err(err) if err_eq(&err, ERROR_OUTOFMEMORY) => return Err(DiscoverDevicesError::OutOfMemory),
+        Err(err) if err_eq(&err, ERROR_INVALID_HANDLE) => return Err(DiscoverDevicesError::BluetoothError),
+        Err(err) if err_eq(&err, ERROR_GEN_FAILURE) => return Err(DiscoverDevicesError::BluetoothError),
         Err(err) if err_eq(&err, ERROR_NO_MORE_ITEMS) => return Ok(found_devices),
         Err(err) => return Err(DiscoverDevicesError::UnhandledWin32ApiErr(err)),
     };
@@ -57,11 +62,13 @@ pub fn discover_devices() -> Result<Vec<BluetoothDevice>, DiscoverDevicesError> 
             Err(err) => {
                 // even if closing the handle errors, only return the first error
                 let _ = unsafe { BluetoothFindDeviceClose(h_find) };
-                
-                match err {
-                    err if err_eq(&err, ERROR_INVALID_HANDLE) => unreachable!("handle should be valid"),
-                    err if err_eq(&err, ERROR_OUTOFMEMORY) => return Err(DiscoverDevicesError::OutOfMemory),
-                    err => return Err(DiscoverDevicesError::UnhandledWin32ApiErr(err)),
+
+                return match err {
+                    // since h_find is known to not be null, I'm assuming this can only happen if bluetooth is disconnected between this call and the last call
+                    err if err_eq(&err, ERROR_INVALID_HANDLE) => Err(DiscoverDevicesError::BluetoothError),
+                    err if err_eq(&err, ERROR_GEN_FAILURE) => Err(DiscoverDevicesError::BluetoothError),
+                    err if err_eq(&err, ERROR_OUTOFMEMORY) => Err(DiscoverDevicesError::OutOfMemory),
+                    err => Err(DiscoverDevicesError::UnhandledWin32ApiErr(err)),
                 }
             }
         }
@@ -70,6 +77,9 @@ pub fn discover_devices() -> Result<Vec<BluetoothDevice>, DiscoverDevicesError> 
     // SAFETY: handle is open and valid, search is complete, not called concurrently
     match unsafe { BluetoothFindDeviceClose(h_find) } {
         Ok(_) => Ok(found_devices),
+        // since h_find is known to not be null, I'm assuming this can only happen if bluetooth is disconnected between this call and the last call
+        Err(err) if err_eq(&err, ERROR_INVALID_HANDLE) => Err(DiscoverDevicesError::BluetoothError),
+        Err(err) if err_eq(&err, ERROR_GEN_FAILURE) => Err(DiscoverDevicesError::BluetoothError),
         Err(err) => Err(DiscoverDevicesError::UnhandledWin32ApiErr(err))
     }
 }
