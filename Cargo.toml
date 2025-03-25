@@ -3,4 +3,11 @@ name = "bluetooth_timeout"
 version = "0.1.0"
 edition = "2024"
 
+[workspace]
+resolver = "2"
+members = ["windows_bluetooth"]
+
 [dependencies]
+tracing-subscriber = "0.3.19"
+tracing = "0.1.41"
+windows_bluetooth = { path = "windows_bluetooth" }
