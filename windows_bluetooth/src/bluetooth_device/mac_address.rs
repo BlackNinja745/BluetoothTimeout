@@ -1,4 +1,6 @@
 use std::fmt;
+use windows::Win32::Devices::Bluetooth::BLUETOOTH_ADDRESS;
+
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct MacAddress([u8;6]);
 
@@ -47,5 +49,12 @@ impl From<[u8; 6]> for MacAddress {
 impl From<MacAddress> for [u8; 6] {
     fn from(mac_address: MacAddress) -> Self {
         mac_address.0
+    }
+}
+
+impl From<BLUETOOTH_ADDRESS> for MacAddress {
+    fn from(addr: BLUETOOTH_ADDRESS) -> Self {
+        // SAFETY: all bit patterns are valid for both fields of the union
+        Self(unsafe { addr.Anonymous.rgBytes })
     }
 }
