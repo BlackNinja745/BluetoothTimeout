@@ -1,6 +1,7 @@
 mod discover;
 mod bluetooth_device;
 mod connect_os;
+mod remove;
 pub(crate) mod with_err;
 
 use windows::core::HRESULT;
