@@ -7,7 +7,7 @@ use crate::bluetooth_device::BluetoothDevice;
 
 #[inline]
 fn err_eq(win_err: &WinErr, win32_err: WIN32_ERROR) -> bool {
-    win_err.code() == HRESULT::from_win32(win32_err.0)
+    crate::err_eq(win_err.code(), win32_err)
 }
 
 #[derive(Debug, thiserror::Error)]

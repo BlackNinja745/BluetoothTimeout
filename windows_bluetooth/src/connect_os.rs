@@ -3,11 +3,8 @@ use windows::Win32::Devices::Bluetooth::{BLUETOOTH_MITM_ProtectionNotRequired, B
 use windows::Win32::Foundation::{ERROR_ACCESS_DENIED, ERROR_CANCELLED, ERROR_GEN_FAILURE, ERROR_INVALID_HANDLE, ERROR_INVALID_PARAMETER, ERROR_NOT_AUTHENTICATED, ERROR_NOT_FOUND, ERROR_NO_MORE_ITEMS, ERROR_REVISION_MISMATCH, ERROR_SUCCESS, HANDLE, WIN32_ERROR};
 use windows::core::Error as WinErr;
 use crate::bluetooth_device::MacAddress;
-
-#[inline]
-fn err_eq(h_res: HRESULT, win32_err: WIN32_ERROR) -> bool {
-    h_res == HRESULT::from_win32(win32_err.0)
-}
+use crate::err_eq;
+use crate::with_err::{self, BluetoothGetDeviceInfoErr, BluetoothRemoveDeviceErr};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ConnectToDeviceError {
@@ -36,7 +33,7 @@ pub fn connect_to_device_os(mac_address: MacAddress) -> Result<(), ConnectToDevi
     };
 
     // SAFETY: device info is properly initialized, not being used concurrently
-    unsafe { bluetooth_get_device_info_with_err(None, &mut device_info)?; }
+    unsafe { with_err::bluetooth_get_device_info(None, &mut device_info)?; }
 
     if device_info.fConnected.as_bool() {
         return Ok(());
@@ -44,10 +41,10 @@ pub fn connect_to_device_os(mac_address: MacAddress) -> Result<(), ConnectToDevi
     
     if device_info.fAuthenticated.as_bool() {
         // SAFETY: not being used concurrently
-        unsafe { bluetooth_remove_device_with_err(&device_info.Address)?; }
+        unsafe { with_err::bluetooth_remove_device(&device_info.Address)?; }
 
         // SAFETY: device info's state was given by OS, so assumed to be safe; not being concurrently modified
-        unsafe { bluetooth_get_device_info_with_err(None, &mut device_info)?; }
+        unsafe { with_err::bluetooth_get_device_info(None, &mut device_info)?; }
     }
 
     // SAFETY: device info's state was given by OS, so assumed to be safe; not being concurrently modified
@@ -69,34 +66,22 @@ pub fn connect_to_device_os(mac_address: MacAddress) -> Result<(), ConnectToDevi
     }
 }
 
-unsafe fn bluetooth_get_device_info_with_err(h_radio: Option<HANDLE>, device_info: &mut BLUETOOTH_DEVICE_INFO) -> Result<(), ConnectToDeviceError> {
-    let target_addr = MacAddress::from(device_info.Address);
-
-    // SAFETY: dwSize should be set properly by caller, should not be used concurrently
-    let h_res = HRESULT::from_win32(unsafe { BluetoothGetDeviceInfo(h_radio, device_info) });
-
-    let res_addr = MacAddress::from(device_info.Address);
-
-    match h_res {
-        res if err_eq(res, ERROR_REVISION_MISMATCH) => unreachable!("caller should set dwSize correctly"),
-        res if err_eq(res, ERROR_INVALID_PARAMETER) => Err(ConnectToDeviceError::InvalidMacAddress),
-        res if err_eq(res, ERROR_NOT_FOUND) => Err(ConnectToDeviceError::InvalidMacAddress),
-        res if err_eq(res, ERROR_SUCCESS) && target_addr != res_addr => Err(ConnectToDeviceError::InvalidMacAddress),
-        res if err_eq(res, ERROR_GEN_FAILURE) => Err(ConnectToDeviceError::BluetoothError),
-        res if err_eq(res, ERROR_INVALID_HANDLE) => Err(ConnectToDeviceError::BluetoothError),
-        res if err_eq(res, ERROR_SUCCESS) => Ok(()), // successfully got device info
-        res => Err(ConnectToDeviceError::UnhandledWin32ApiErr(WinErr::from_hresult(res))),
+impl From<BluetoothGetDeviceInfoErr> for ConnectToDeviceError {
+    fn from(err: BluetoothGetDeviceInfoErr) -> Self {
+        match err {
+            BluetoothGetDeviceInfoErr::InvalidMacAddress => ConnectToDeviceError::InvalidMacAddress,
+            BluetoothGetDeviceInfoErr::BluetoothError => ConnectToDeviceError::BluetoothError,
+            BluetoothGetDeviceInfoErr::Other(err) => ConnectToDeviceError::UnhandledWin32ApiErr(err),
+        }
     }
 }
 
-unsafe fn bluetooth_remove_device_with_err(bluetooth_address: &BLUETOOTH_ADDRESS) -> Result<(), ConnectToDeviceError> {
-    // SAFETY: caller must ensure no concurrent use? invalid addresses are handled by this function
-    match unsafe { HRESULT::from_win32(BluetoothRemoveDevice(bluetooth_address)) } {
-        res if err_eq(res, ERROR_INVALID_PARAMETER) => Err(ConnectToDeviceError::InvalidMacAddress),
-        res if err_eq(res, ERROR_NOT_FOUND) => Err(ConnectToDeviceError::InvalidMacAddress),
-        res if err_eq(res, ERROR_GEN_FAILURE) => Err(ConnectToDeviceError::BluetoothError),
-        res if err_eq(res, ERROR_INVALID_HANDLE) => Err(ConnectToDeviceError::BluetoothError),
-        res if err_eq(res, ERROR_SUCCESS) => Ok(()), // successfully removed bluetooth device
-        res => Err(ConnectToDeviceError::UnhandledWin32ApiErr(WinErr::from_hresult(res))),
+impl From<BluetoothRemoveDeviceErr> for ConnectToDeviceError {
+    fn from(err: BluetoothRemoveDeviceErr) -> Self {
+        match err {
+            BluetoothRemoveDeviceErr::InvalidMacAddress => ConnectToDeviceError::InvalidMacAddress,
+            BluetoothRemoveDeviceErr::BluetoothError => ConnectToDeviceError::BluetoothError,
+            BluetoothRemoveDeviceErr::Other(err) => ConnectToDeviceError::UnhandledWin32ApiErr(err),
+        }
     }
 }
