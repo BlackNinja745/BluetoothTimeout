@@ -1,9 +1,10 @@
 use std::ffi::OsString;
 use std::os::windows::ffi::OsStringExt;
 use std::ptr;
+use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use windows::core::HRESULT;
 use windows::Win32::Devices::Bluetooth::{BluetoothFindDeviceClose, BluetoothFindFirstDevice, BluetoothFindNextDevice, BLUETOOTH_DEVICE_INFO, BLUETOOTH_DEVICE_SEARCH_PARAMS};
-use windows::Win32::Foundation::{ERROR_INVALID_HANDLE, ERROR_INVALID_PARAMETER, ERROR_NO_MORE_ITEMS, ERROR_OUTOFMEMORY, ERROR_REVISION_MISMATCH, FALSE, HANDLE, TRUE, WIN32_ERROR};
+use windows::Win32::Foundation::{ERROR_INVALID_HANDLE, ERROR_INVALID_PARAMETER, ERROR_NO_MORE_ITEMS, ERROR_OUTOFMEMORY, ERROR_REVISION_MISMATCH, FALSE, HANDLE, SYSTEMTIME, TRUE, WIN32_ERROR};
 use windows::core::Error as WinErr;
 use crate::bluetooth_device::{BluetoothDevice, MacAddress};
 
@@ -54,12 +55,17 @@ pub fn discover_devices() -> Result<Vec<BluetoothDevice>, DiscoverDevicesError> 
             .trim_end_matches('\0')
             .to_owned();
         
-        // SAFETY: all bit patterns are valid for both fields of the union
-        let mac_address = MacAddress::from(unsafe { device_info.Address.Anonymous.rgBytes });
         
         found_devices.push(BluetoothDevice {
+            // SAFETY: all bit patterns are valid for both fields of the union
+            mac_address: MacAddress::from(unsafe { device_info.Address.Anonymous.rgBytes }),
             name: (!name.is_empty()).then_some(name),
-            mac_address,
+            class: device_info.ulClassofDevice,
+            connected: device_info.fConnected.as_bool(),
+            remembered: device_info.fRemembered.as_bool(),
+            authenticated: device_info.fAuthenticated.as_bool(),
+            last_seen: into_opt_naive_date(device_info.stLastSeen),
+            last_used: into_opt_naive_date(device_info.stLastUsed),
         });
 
         // SAFETY: handle is valid & device info's state was given by OS, so assumed to be safe; not being concurrently modified
@@ -83,5 +89,19 @@ pub fn discover_devices() -> Result<Vec<BluetoothDevice>, DiscoverDevicesError> 
     match unsafe { BluetoothFindDeviceClose(h_find) } {
         Ok(_) => Ok(found_devices),
         Err(err) => Err(DiscoverDevicesError::UnhandledWin32ApiErr(err))
+    }
+}
+
+fn into_opt_naive_date(system_time: SYSTEMTIME) -> Option<NaiveDateTime> {
+    const EPOCH: SYSTEMTIME = SYSTEMTIME { wYear: 1601, wMonth: 1, wDayOfWeek: 1, wDay: 1, wHour: 0, wMinute: 0, wSecond: 0, wMilliseconds: 0 };
+    
+    match system_time {
+        EPOCH => None,
+        st => Some(NaiveDateTime::new(
+            NaiveDate::from_ymd_opt(st.wYear as _, st.wMonth as _, st.wDay as _)
+                .expect("should be valid date"),
+            NaiveTime::from_hms_milli_opt(st.wHour as _, st.wMinute as _, st.wSecond as _, st.wMilliseconds as _)
+                .expect("should be valid date"),
+        ))
     }
 }
