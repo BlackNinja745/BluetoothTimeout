@@ -1,10 +1,13 @@
-mod mac_address;
-
 use std::ffi::OsString;
 use std::os::windows::ffi::OsStringExt;
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use windows::Win32::Devices::Bluetooth::BLUETOOTH_DEVICE_INFO;
 use windows::Win32::Foundation::SYSTEMTIME;
+
+mod mac_address;
+mod ext;
+
+pub use ext::BluetoothDeviceExt;
 pub use mac_address::MacAddress;
 
 
