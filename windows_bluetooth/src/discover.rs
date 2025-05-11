@@ -14,9 +14,9 @@ fn err_eq(win_err: &WinErr, win32_err: WIN32_ERROR) -> bool {
 pub enum DiscoverDevicesError {
     #[error("Not enough storage is available to complete this operation")]
     OutOfMemory,
-    #[error("Error with bluetooth adapter, bluetooth may be off or no bluetooth adapter exists.")]
+    #[error("Error with bluetooth adapter, bluetooth may be off, or no bluetooth adapter exists.")]
     BluetoothError,
-    #[error("Unhandled error from windows api: {0}")]
+    #[error("Unhandled error from Windows api: {0}")]
     UnhandledWin32ApiErr(WinErr),
 }
 

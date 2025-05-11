@@ -10,13 +10,13 @@ use crate::with_err::{self, BluetoothGetDeviceInfoErr, BluetoothRemoveDeviceErr}
 pub enum ConnectToDeviceError {
     #[error("The provided MAC Address was invalid")]
     InvalidMacAddress,
-    #[error("Error with bluetooth adapter, bluetooth may be off or no bluetooth adapter exists.")]
+    #[error("Error with bluetooth adapter, bluetooth may be off, or no bluetooth adapter exists.")]
     BluetoothError,
-    #[error("The user wasn't authenticated or cancelled the operation")]
+    #[error("The user wasn't authenticated or canceled the operation")]
     Cancelled,
     #[error("Insufficient permissions or bluetooth device cannot be paired to")]
     AccessDenied,
-    #[error("Unhandled error from windows api: {0}")]
+    #[error("Unhandled error from Windows api: {0}")]
     UnhandledWin32ApiErr(WinErr),
 }
 
