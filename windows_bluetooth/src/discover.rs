@@ -1,5 +1,4 @@
 use std::ptr;
-use windows::core::HRESULT;
 use windows::Win32::Devices::Bluetooth::{BluetoothFindDeviceClose, BluetoothFindFirstDevice, BluetoothFindNextDevice, BLUETOOTH_DEVICE_INFO, BLUETOOTH_DEVICE_SEARCH_PARAMS};
 use windows::Win32::Foundation::{ERROR_GEN_FAILURE, ERROR_INVALID_HANDLE, ERROR_INVALID_PARAMETER, ERROR_NO_MORE_ITEMS, ERROR_OUTOFMEMORY, ERROR_REVISION_MISMATCH, FALSE, HANDLE, TRUE, WIN32_ERROR};
 use windows::core::Error as WinErr;
