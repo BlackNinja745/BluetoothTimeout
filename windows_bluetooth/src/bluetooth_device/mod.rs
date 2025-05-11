@@ -12,7 +12,7 @@ pub use mac_address::MacAddress;
 
 
 // TODO: don't make fields public; getter?
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BluetoothDevice {
     pub mac_address: MacAddress,
     pub name: Option<String>,
