@@ -8,6 +8,13 @@ resolver = "2"
 members = ["windows_bluetooth"]
 
 [dependencies]
-tracing-subscriber = "0.3.19"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 tracing = "0.1.41"
 windows_bluetooth = { path = "windows_bluetooth" }
+tokio = { version = "1.44.1", features = ["rt", "rt-multi-thread", "sync", "macros"] }
+eframe = "0.31.1"
+humantime = "2.2.0"
+pollster = "0.4.0"
+
+[package.metadata.bundle]
+name = "Bluetooth Timeout"
