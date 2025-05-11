@@ -36,7 +36,7 @@ impl BluetoothDevice {
             mac_address: MacAddress::from(device.Address),
             name: (!name.is_empty()).then_some(name),
             class: device.ulClassofDevice,
-            connected: device.fConnected.as_bool(),
+            connected: device.fConnected.as_bool() && device.fRemembered.as_bool(),
             remembered: device.fRemembered.as_bool(),
             authenticated: device.fAuthenticated.as_bool(),
             last_seen: into_opt_naive_date(device.stLastSeen),
