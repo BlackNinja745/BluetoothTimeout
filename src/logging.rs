@@ -1,11 +1,13 @@
 use std::fmt::Debug;
+use std::str::FromStr;
 use std::time::Instant;
 use tokio::sync::mpsc::Sender;
 use tokio::task;
 use tracing::{Event, Level, Subscriber};
 use tracing::field::{Field, Visit};
-use tracing_subscriber::Layer;
-use tracing_subscriber::layer::Context;
+use tracing_subscriber::{EnvFilter, Layer, Registry};
+use tracing_subscriber::layer::{Context, SubscriberExt};
+use tracing_subscriber::util::{SubscriberInitExt, TryInitError};
 
 #[derive(Clone, Debug)]
 pub struct Log {
@@ -45,4 +47,17 @@ impl<S: Subscriber> Layer<S> for AppLogLayer {
         
         task::spawn_blocking(move || tx.blocking_send(Log { level, message, time: Instant::now() }));
     }
+}
+
+pub fn init(tx: Sender<Log>) -> Result<(), TryInitError> {
+    Registry::default()
+        .with(
+            EnvFilter::try_from_default_env()
+                .unwrap_or(
+                    EnvFilter::from_str("warn,bluetooth_timeout=debug")
+                        .expect("failed to set the default env filter")
+                )
+        )
+        .with(AppLogLayer { sender: tx })
+        .try_init()
 }
