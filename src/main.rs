@@ -5,6 +5,7 @@ mod editing;
 mod card;
 mod spinner;
 mod timeout;
+mod logging;
 
 use std::str::FromStr;
 use eframe::egui::ViewportBuilder;
