@@ -21,7 +21,7 @@ async fn main() -> eframe::Result {
     logging::init(tx).expect("init shouldn't fail");
     
     eframe::run_native(
-        "Bluetooth App",
+        "Bluetooth Timeout",
         eframe::NativeOptions {
             viewport: ViewportBuilder::default()
                 .with_resizable(false)
