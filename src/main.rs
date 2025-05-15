@@ -6,6 +6,7 @@ mod card;
 mod spinner;
 mod timeout;
 mod logging;
+mod notification;
 
 use std::str::FromStr;
 use eframe::egui::ViewportBuilder;
@@ -32,7 +33,7 @@ async fn main() -> eframe::Result {
         Box::new(move |cc| {
             cc.egui_ctx.style_mut(|style| style.visuals.dark_mode = true);
 
-            Ok(Box::new(BluetoothApp::new_now()))
+            Ok(Box::new(BluetoothApp::new_now_with_log_rx(rx)))
         }),
     )
 }

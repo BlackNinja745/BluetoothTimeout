@@ -12,6 +12,8 @@ use tracing::debug;
 use windows_bluetooth::{connect_to_device_os, discover_devices, remove_device, BluetoothDevice, ConnectToDeviceError, DiscoverDevicesError, MacAddress, RemoveDeviceError};
 use crate::card::{AvailableDeviceCard, ConnectedDeviceCard};
 use crate::editing::{TimeoutEditUi, TimeoutEditing};
+use crate::logging::Log;
+use crate::notification::Notification;
 use crate::spinner::RescanButtonSpinner;
 use crate::timeout::Timeout;
 
@@ -25,11 +27,13 @@ pub struct BluetoothApp {
     pub remove_res_channel: (Sender<RemoveDeviceRes>, Receiver<RemoveDeviceRes>),
     pub scan_recv: Option<OnceReceiver<Result<Vec<BluetoothDevice>, DiscoverDevicesError>>>,
     pub last_timeout_update: Instant,
+    pub log_rx: Receiver<Log>,
+    pub logs: Vec<Log>,
     pub editing: Option<TimeoutEditing>,
 }
 
 impl BluetoothApp {
-    pub fn new_now() -> Self {
+    pub fn new_now_with_log_rx(rx: Receiver<Log>) -> Self {
         Self {
             devices: Vec::default(),
             timeouts: Vec::default(),
@@ -37,6 +41,8 @@ impl BluetoothApp {
             remove_res_channel: mpsc::channel(2),
             scan_recv: None,
             last_timeout_update: Instant::now(),
+            log_rx: rx,
+            logs: Vec::new(),
             editing: None,
         }
     }
@@ -128,6 +134,14 @@ impl BluetoothApp {
 
         self.last_timeout_update = Instant::now();
     }
+    
+    pub fn process_logs(&mut self) {
+        while let Ok(msg) = self.log_rx.try_recv() {
+            self.logs.push(msg);
+        }
+        
+        self.logs.retain(|log| log.time.elapsed() < Duration::from_secs(3));
+    }
 }
 
 impl eframe::App for BluetoothApp {
@@ -135,6 +149,7 @@ impl eframe::App for BluetoothApp {
         self.try_update_with_scan_result();
         self.check_remove_connect_res();
         self.process_timeout();
+        self.process_logs();
 
         ctx.request_repaint_after_secs(2.0);
 
@@ -172,6 +187,19 @@ impl eframe::App for BluetoothApp {
             }
         }
 
+        if !self.logs.is_empty() {
+            egui::Area::new("log_area".into())
+                .anchor(egui::Align2::CENTER_BOTTOM, [0.0, -10.0])
+                .show(ctx, |ui| {
+                    ui.set_max_width(225.0);
+                    
+                    for notif in self.logs.iter().rev().take(3) {
+                        ui.add(Notification(notif));
+                        ui.add_space(4.0);
+                    }
+                });
+        }
+        
         egui::CentralPanel::default().show(ctx, |ui| {
             let card_margin = Margin::same(2);
 
