@@ -5,21 +5,21 @@ mod editing;
 mod card;
 mod spinner;
 mod timeout;
+mod logging;
+mod notification;
 
 use std::str::FromStr;
 use eframe::egui::ViewportBuilder;
-use tracing_subscriber::EnvFilter;
+use tokio::sync::mpsc;
 use app::BluetoothApp;
 
 #[tokio::main]
 async fn main() -> eframe::Result {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::from_str("warn,bluetooth_timeout=debug")
-                .expect("failed to set default env filter")
-        )
-        .init();
-
+    // for logging
+    let (tx, rx) = mpsc::channel(5);
+    
+    logging::init(tx).expect("init shouldn't fail");
+    
     eframe::run_native(
         "Bluetooth App",
         eframe::NativeOptions {
@@ -33,7 +33,7 @@ async fn main() -> eframe::Result {
         Box::new(move |cc| {
             cc.egui_ctx.style_mut(|style| style.visuals.dark_mode = true);
 
-            Ok(Box::new(BluetoothApp::new_now()))
+            Ok(Box::new(BluetoothApp::new_now_with_log_rx(rx)))
         }),
     )
 }
