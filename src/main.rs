@@ -13,7 +13,7 @@ use eframe::egui::ViewportBuilder;
 use tokio::sync::mpsc;
 use app::BluetoothApp;
 
-#[tokio::main]
+#[tokio::main(flavor="current_thread")]
 async fn main() -> eframe::Result {
     // for logging
     let (tx, rx) = mpsc::channel(5);
