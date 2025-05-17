@@ -15,6 +15,3 @@ tokio = { version = "1.44.1", features = ["rt", "rt-multi-thread", "sync", "macr
 eframe = "0.31.1"
 humantime = "2.2.0"
 pollster = "0.4.0"
-
-[package.metadata.bundle]
-name = "Bluetooth Timeout"
