@@ -1,5 +1,5 @@
 # BluetoothTimeout
-Application to automatically disconnect a Bluetooth device after a timeout.
+Application for disconnecting one or more Bluetooth devices after a timeout.
 
 ![App demo](./assets/showcase.jpg)
 
