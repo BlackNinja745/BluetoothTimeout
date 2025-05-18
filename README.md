@@ -1,6 +1,8 @@
 # BluetoothTimeout
 Application to automatically disconnect a Bluetooth device after a timeout.
 
+![App demo](./assets/showcase.jpg)
+
 ## Features
 - Safe & helpful wrapper over Win32 bluetooth api
 - App to connect to devices and automatically disconnect after timeout
