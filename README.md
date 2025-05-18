@@ -14,7 +14,7 @@ I'm not sure why, but you may need to first open the bluetooth widget in the tas
 Once connected, Windows wil prompt you to connect, and once you do so, you will be able to set a timeout for the device. Timeouts can be set like `1h 25s`.
 
 ## Motivation
-Usually, after connecting my bluetooth speaker to my PC, I'll forget about it until the next day when I try to play something and sounds starts blasting out of it from across the room.
+Usually, after connecting my bluetooth speaker to my PC, I'll forget about it until the next day when I try to play something, and sound starts playing out of it from across the room.
 This is a simple utility app that lets you connect to a bluetooth device and set a timeout. Once the timeout expires, the bluetooth device will be automatically disconnected.
 If you close the program, all devices connected through it are also disconnected.
 Since no bluetooth libraries handled classic bluetooth on Windows, I had to make my own wrapper for the Win32 api using the windows-rs crate.
